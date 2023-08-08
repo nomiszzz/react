@@ -1,4 +1,4 @@
-import { REACT_ELEMENT, REACT_FORWARD_REF, REACT_TEXT } from "./utils";
+import { REACT_ELEMENT, REACT_FORWARD_REF, REACT_TEXT, MOVE, CREATE } from "./utils";
 import { addEvent } from './event';
 
 function render(VNode, containerDom) {
@@ -7,6 +7,7 @@ function render(VNode, containerDom) {
 
 function mount(VNode, containerDom) {
   const newDom = createDom(VNode);
+  console.log(newDom);
   containerDom.appendChild(newDom)
 }
 
@@ -23,7 +24,7 @@ function createDom(VNode) {
   } else if (typeof type === 'function' && VNode.$$typeof === REACT_ELEMENT) { // 函数组件
     return getDomByFunctionComponent(VNode)
   }
-  if (type && VNode.$$typeof === REACT_TEXT) {
+  if (type === REACT_TEXT) {
     dom = document.createTextNode(props.text);
   }
   else if (type && VNode.$$typeof === REACT_ELEMENT) {
@@ -48,7 +49,7 @@ function mountArray(children, parent) {
   if (!Array.isArray(children)) render;
   const length = children.length
   for (let i = 0; i < length; i++) {
-    children[i].index = i;
+    children[i].index = i; // 用在后面的updateChildren中进行仅右移的计算中
     mount(children[i], parent)
   }
 }
@@ -79,21 +80,26 @@ function setPropsForDOM(dom, VNodeProps = {}) {
 }
 
 function getDomByFunctionComponent(VNode) {
-  const { type, props } = VNode;
-  const renderVNode = type(props);
+  let { type, props } = vNode;
+  let renderVNode = type(props);
   if (!renderVNode) return null;
-  return createDom(renderVNode);
+  vNode.oldRenderVNode = renderVNode
+  let dom = createDOM(renderVNode)
+  vNode.dom = dom
+  return dom;
 }
 
 function getDomByClassComponent(VNode) {
-  const {type, props, ref} = VNode;
-  const renderInstance = new type(props);
-  // 类组件ref是返回类组件的实例
-  ref && (ref.current = renderInstance)
-  const renderVNode = renderInstance.render();
-  renderInstance.oldVNode = renderVNode;
+  let { type, props, ref } = vNode;
+  let instance = new type(props)
+  vNode.classInstance = instance
+  ref && (ref.current = instance);
+  let renderVNode = instance.render();
+  instance.oldVNode = renderVNode
   if (!renderVNode) return null;
-  return createDom(renderVNode)
+  let dom = createDOM(renderVNode);
+  if (instance.componentDidMount) instance.componentDidMount();
+  return dom
 }
 
 
@@ -148,7 +154,124 @@ function removeVNode(VNode) {
 }
 
 function deepDOMDiff(oldVNode, newVNode) {
+  let diffTypeMap = {
+    ORIGIN_NODE: typeof oldVNode.type === 'string', // 原生节点
+    CLASS_COMPONENT: typeof oldVNode.type === 'function' && oldVNode.type.isReactComponent,
+    FUNCTION_COMPONENT: typeof oldVNode.type === 'function',
+    TEXT: oldVNode.type === REACT_TEXT
+  }
+  let DIFF_TYPE = Object.keys(diffTypeMap).filter(key => diffTypeMap[key])[0];
+  switch (DIFF_TYPE) {
+    case 'ORIGIN_NODE':
+      let currentDom = newVNode.dom = findDomByVNode(oldVNode);
+      setPropsForDOM(currentDom, newVNode.props);
+      updateChildren(currentDom, oldVNode.props.children, newVNode.props.children)
+      break;
+    case 'CLASS_COMPONENT':
+      updateClassComponent(oldVNode, newVNode);
+      break;
+    case 'FUNCTION_COMPONENT':
+      updateFunctionComponent(oldVNode, newVNode)
+      break
+    case 'TEXT':
+      newVNode.dom = findDomByVNode(oldVNode)
+      newVNode.dom.textContent = newVNode.props.text;
+      break;
+    default:
+      break;
+  }
+}
 
+function updateClassComponent(oldVNode, newVNode) {
+  // 获取实例，新的实例
+  const classInstance = newVNode.classInstance = oldVNode.classInstance;
+  // 调用更新
+  classInstance.updater.launchUpdate()
+}
+
+function updateFunctionComponent(oldVNode, newVNode) {
+  let oldDom = findDomByVNode(oldVNode);
+  if (!oldDom) return;
+  const { type, props } = newVNode;
+  // 函数组件本身转化成虚拟dom，其中type是return的函数，type(props)执行完就是要渲染的虚拟dom
+  const newRenderVNode = type(props);
+  // 无论是函数组件还是类组件最终都会执行updateDomTree
+  updateDomTree(oldVNode.oldRenderVNode, newRenderVNode, oldDom);
+  newVNode.oldRenderVNode = newRenderVNode
+}
+
+// Dom Diff 核心
+function updateChildren(parentDom, oldVNodeChildren, newVNodeChildren) {
+  oldVNodeChildren = (Array.isArray(oldVNodeChildren) ? oldVNodeChildren : [oldVNodeChildren]).filter(Boolean);
+  newVNodeChildren = (Array.isArray(newVNodeChildren) ? newVNodeChildren : [newVNodeChildren]).filter(Boolean);
+  let oldKeyChildMap = {};
+  oldVNodeChildren.forEach((oldVNode, index) => {
+    let oldKey = oldVNode?.key ?? index;
+    oldKeyChildMap[oldKey] = oldVNode
+  });
+  let lastNotChangedIndex = -1;
+  // 遍历新的VNode,找到可以复用但需要移动的节点、重新创建的节点、需要删除的节点，余下的都是不用动的节点
+  // 动作具体是什么，需要具体记录
+  const actions = []
+  newVNodeChildren.forEach((newVNode, index) => {
+    newVNode.index = index;
+    const newKey = newVNode?.key ?? index;
+    const oldVNode = oldKeyChildMap(newKey);
+    // 如果在oldKeyChildMap中存在就意味着可以复用，找不到就需要重新创建
+    if (oldVNode) {
+      // 意味着两个虚拟节点是同一条数据则需要深度diff
+      deepDOMDiff(oldVNode, newVNode)
+      // 更新结束之后
+      // diff算法仅右移
+      if (lastNotChangedIndex > oldVNode.index ) {
+        actions.push({
+          type: MOVE,
+          index,
+          oldVNode,
+          newVNode,
+        })
+      }
+      // 删除命中的节点
+      delete oldKeyChildMap[newKey];
+      // 更新一下位置
+      lastNotChangedIndex = Math.max(lastNotChangedIndex, oldVNode.key);
+    } else {
+      actions.push({
+        type: CREATE,
+        index,
+        newVNode
+      })
+    }
+  })
+  // 找到所有要移动的节点, 从actions中查找出type都是move的节点，返回其中的oldVNode,就是可复用但是需要移动的
+  const VNodeToMove = actions.filter(action => action.type === MOVE).map(action => action.oldVNode);
+  // 找到所有要删除的节点
+  // 剩下的就是在新vnodechildren中没有的节点，删除
+  const VNodeToDelete = Object.values(oldKeyChildMap)
+  // 移动和删除的节点，都从父节点上删除
+  VNodeToMove.concat(VNodeToDelete).forEach(oldVNode => {
+    const currentDom = findDomByVNode(oldVNode);
+    currentDom.remove();
+  })
+  // 对需要移动以及需要新创建的节点统一插入到正确的位置
+  actions.forEach(action => {
+    const { index, type, oldVNode, newVNode } = action;
+    const childNodes = parentDom.childNodes;
+    const childNode = childNodes[index];
+    const getDomForInsert = () => {
+      if (type === CREATE) {
+        return createDom(newVNode)
+      }
+      if (type === MOVE) {
+        return findDomByVNode(oldVNode)
+      }
+    }
+    if (childNode) {
+        parentDOM.insertBefore(getDomForInsert(), childNode)
+    } else {
+        parentDOM.appendChild(getDomForInsert());
+    }
+  })
 }
 
 const ReactDOM = {
