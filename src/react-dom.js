@@ -1,4 +1,4 @@
-import { REACT_ELEMENT } from "./utils";
+import { REACT_ELEMENT, REACT_FORWARD_REF, REACT_TEXT } from "./utils";
 import { addEvent } from './event';
 
 function render(VNode, containerDom) {
@@ -14,12 +14,19 @@ function createDom(VNode) {
   // 1.根据type创建节点 2.根据children创建子节点 3.处理props
   const { type, props, ref } = VNode;
   let dom
+  if (type && type.$$typeof === REACT_FORWARD_REF) {
+    return getDomByRefForwardFunction(VNode);
+  }
   // class组件
   if (typeof type === 'function' && VNode.$$typeof === REACT_ELEMENT && type.IS_CLASS_COMPONENT) {
     return getDomByClassComponent(VNode);
   } else if (typeof type === 'function' && VNode.$$typeof === REACT_ELEMENT) { // 函数组件
     return getDomByFunctionComponent(VNode)
-  } else if (type && VNode.$$typeof === REACT_ELEMENT) {
+  }
+  if (type && VNode.$$typeof === REACT_TEXT) {
+    dom = document.createTextNode(props.text);
+  }
+  else if (type && VNode.$$typeof === REACT_ELEMENT) {
     dom = document.createElement(type)
   }
   if (props) {
@@ -27,8 +34,6 @@ function createDom(VNode) {
       mount(props.children, dom)
     } else if (Array.isArray(props.children)) {
       mountArray(props.children, dom)
-    } else if (typeof props.children === 'string') {
-      dom.appendChild(document.createTextNode(props.children))
     }
   }
   setPropsForDOM(dom, props);
@@ -43,11 +48,8 @@ function mountArray(children, parent) {
   if (!Array.isArray(children)) render;
   const length = children.length
   for (let i = 0; i < length; i++) {
-    if (typeof children[i] === 'string') {
-      parent.appendChild(document.createTextNode(children[i]))
-    } else {
-      mount(children[i], parent)
-    }
+    children[i].index = i;
+    mount(children[i], parent)
   }
 }
 
@@ -94,16 +96,59 @@ function getDomByClassComponent(VNode) {
   return createDom(renderVNode)
 }
 
-export function findDomByVnode(VNode) {
+
+function getDomByRefForwardFunction(VNode) {
+  const {type, props, ref} = VNode;
+  const renderVNode = type.render(props, ref);
+  if (!renderVNode) return null;
+  return createDom(renderVNode)
+}
+
+export function findDomByVNode(VNode) {
   if (!VNode) return;
   if (VNode.dom) return VNode.dom;
 }
 
-export function updateDomTree(oldDom, newVNode) {
+export function updateDomTree(oldVNode, newVNode, oldDom) {
   if (!oldDom) return;
-  let parentNode = oldDom.parentNode;
-  parentNode.removeChild(oldDom);
-  parentNode.appendChild(createDom(newVNode))
+  // let parentNode = oldDom.parentNode;
+  // parentNode.removeChild(oldDom);
+  // parentNode.appendChild(createDom(newVNode))
+  const typeMap = {
+    NO_OPERATE: !oldVNode && !newVNode,
+    ADD: !oldVNode && newVNode,
+    DELETE: oldVNode && !newVNode,
+    REPLACE: oldVNode && newVNode && oldVNode.type !== newVNode.type
+  }
+  let UPDATE_TYPE = Object.keys(typeMap).filter(key => typeMap[key])[0];
+  switch (UPDATE_TYPE) {
+    case 'NO_OPERATE':
+      break;
+    case 'ADD':
+      oldDom.parentNode.appendChild(createDom(newVNode));
+      break;
+    case 'DELETE':
+      removeVNode(oldVNode);
+      break;
+    case 'REPLACE':
+      removeVNode(oldDom);
+      oldDom.parentNode.appendChild(createDom(newVNode));
+      break;
+    default:
+      deepDOMDiff(oldVNode, newVNode)
+      break;
+  }
+}
+
+function removeVNode(VNode) {
+  const currentDome = findDomByVNode(VNode);
+  if (currentDome) {
+    currentDome.remove()
+  }
+}
+
+function deepDOMDiff(oldVNode, newVNode) {
+
 }
 
 const ReactDOM = {

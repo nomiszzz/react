@@ -1,4 +1,4 @@
-import { REACT_ELEMENT } from './utils';
+import { REACT_ELEMENT, REACT_FORWARD_REF, toVNode } from './utils';
 
 import { Component } from './Components';
 
@@ -10,10 +10,10 @@ function createElement(type, properties, children) {
   let props = {...properties}
   if (arguments.length > 3) {
     // 多个子元素, 转化成数组
-    props.children = Array.prototype.slice.call(arguments, 2);
+    props.children = Array.prototype.slice.call(arguments, 2).map(toVNode);
   } else {
     // 单个子元素，转化为数组
-    props.children = children;
+    props.children = toVNode(children);
   }
   return {
     $$typeof: REACT_ELEMENT,
@@ -29,10 +29,18 @@ function createRef() {
   return { current: null };
 }
 
+function forwardRef(render) {
+  return {
+    $$typeof: REACT_FORWARD_REF,
+    render
+  }
+}
+
 const React = {
   createElement,
   Component,
-  createRef
+  createRef,
+  forwardRef
 }
 
 export default React
