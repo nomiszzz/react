@@ -1,11 +1,67 @@
 import React from './react';
 import ReactDOM from './react-dom';
 
-const MyForwardRefFunctionComponents = React.forwardRef((props, ref) => {
-  return <div ref={ref}>1</div>
-})
+class TextItem extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      arr: this.oldArr
+    }
+  }
+  componentWillUnmount() {
+    console.log('componentWillUnmount')
+  }
+  render() {
+    return <div>{this.props.text}</div>
+  }
+}
+class Text extends React.Component {
+  oldArr = ['A', 'B', 'C', 'D', 'E'];
+  newArr = ['C', 'B', 'E', 'F', 'A'];
+  isReset = false
+  constructor(props) {
+    super(props);
+    this.state = {
+      arr: this.oldArr
+    }
+  }
+  componentDidMount() {
+    console.log('componentDidMount')
+  }
 
-ReactDOM.render(<MyForwardRefFunctionComponents />, document.getElementById('root'))
+  updateArr() {
+    this.setState({
+      arr: this.isReset ? this.oldArr : this.newArr
+    })
+    this.isReset = !this.isReset
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {
+    console.log('shouldComponentUpdate')
+    return true;
+  }
+  
+  render() {
+    return (
+      <div>
+        <button onClick={() => this.updateArr()}>change</button>
+        <div>
+          {
+          this.state.arr.map((i) => (
+            <div>{i}</div>
+          ))
+          }
+        </div>
+      </div>
+    )
+  }
+}
+
+function Text2() {
+  return (<div>1</div>)
+}
+
+ReactDOM.render(<Text />, document.getElementById('root'))
 
 // const root = ReactDOM.createRoot(document.getElementById('root'));
 // root.render(

@@ -41,18 +41,29 @@ class Updater {
     }
   }
   // 最终要更新的是类组件
-  launchUpdate() {
+  launchUpdate(nextProps) {
     const { ClassComponentInstance, pendingStates} = this;
-    if (pendingStates.length === 0) return
-    ClassComponentInstance.state = this.pendingStates.reduce((prev, curt) => {
+    if (pendingStates.length === 0 && !nextProps) return
+    let isShouldUpdate = true;
+    let nextState = this.pendingStates.reduce((preState, newState) => {
       return {
-        ...prev,
-        ...curt
+        ...preState,
+        ...newState
       }
-    }, this.ClassComponentInstance.state);
+    }, ClassComponentInstance.state);
+    if (ClassComponentInstance.shouldComponentUpdate && !(this.ClassComponentInstance.shouldComponentUpdate(nextProps, nextState))) {
+      isShouldUpdate = false;
+    }
     // 清空
     this.pendingStates.length = 0;
-    this.ClassComponentInstance.update()
+    if (nextProps) {
+      ClassComponentInstance.props = nextProps;
+    }
+    ClassComponentInstance.state = nextState;
+    if (isShouldUpdate) {
+      ClassComponentInstance.update();
+    }
+    
   }
 }
 export class Component {
@@ -78,6 +89,9 @@ export class Component {
     let oldDom = findDomByVNode(oldVNode);
     let newVNode = this.render();
     updateDomTree(oldVNode, newVNode, oldDom);
-    this.oldVNode = newVNode
+    this.oldVNode = newVNode;
+    if (this.componentDidUpdate) {
+      this.componentDidUpdate(this.props, this.state); 
+    }
   } 
 }
