@@ -1,20 +1,25 @@
 import React from './react';
 import ReactDOM from './react-dom';
-class Greeting extends React.PureComponent {
-  constructor(props) {
-    super(props);
-  }
-  render() {
-    console.log(this.props)
-    // console.log("Greeting was rendered at", new Date().toLocaleTimeString());
-    return <h3>Hello{this.props.name && ', '}{this.props.name}!</h3>;
-  }
-}
+// class Greeting extends React.PureComponent {
+//   constructor(props) {
+//     super(props);
+//   }
+//   render() {
+//     console.log(this.props)
+//     // console.log("Greeting was rendered at", new Date().toLocaleTimeString());
+//     return <h3>Hello{this.props.name && ', '}{this.props.name}!</h3>;
+//   }
+// }
 
-// const Greeting = React.memo(function Greeting({ name }) {
+const Greeting = React.memo(function Greeting({ name }) {
+  console.log("Greeting was rendered at", new Date().toLocaleTimeString());
+  return <h3>Hello{name && ', '}{name}!</h3>;
+});
+
+// const Greeting = function Greeting({ name }) {
 //   console.log("Greeting was rendered at", new Date().toLocaleTimeString());
 //   return <h3>Hello{name && ', '}{name}!</h3>;
-// });
+// };
 
 
 class MyApp extends React.Component {

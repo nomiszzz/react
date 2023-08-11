@@ -1,4 +1,5 @@
 export const REACT_ELEMENT = Symbol('react.element');
+export const REACT_MEMO = Symbol('react.memo');
 export const REACT_FORWARD_REF = Symbol('react_forward_ref');
 export const REACT_TEXT = Symbol('react_text');
 
@@ -35,6 +36,12 @@ export const deepClone = (data) => {
   } 
 }
 
+/**
+ * 浅比较
+ * @param {object} obj1 
+ * @param {*} obj2 
+ * @returns 
+ */
 export const shallowEqual = (obj1, obj2) => {
   if (obj1 === obj2) {
     return true;

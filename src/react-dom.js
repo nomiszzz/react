@@ -1,4 +1,4 @@
-import { REACT_ELEMENT, REACT_FORWARD_REF, REACT_TEXT, MOVE, CREATE } from "./utils";
+import { REACT_ELEMENT, REACT_MEMO, REACT_FORWARD_REF, REACT_TEXT, MOVE, CREATE } from "./utils";
 import { addEvent } from './event';
 
 function render(VNode, containerDom) {
@@ -16,6 +16,9 @@ function createDom(VNode) {
   let dom
   if (type && type.$$typeof === REACT_FORWARD_REF) {
     return getDomByRefForwardFunction(VNode);
+  }
+  if (type && type.$$typeof === REACT_MEMO) {
+    return getDomByMemoFunctionComponent(VNode)
   }
   // class组件
   if (typeof type === 'function' && VNode.$$typeof === REACT_ELEMENT && type.IS_CLASS_COMPONENT) {
@@ -75,6 +78,16 @@ function setPropsForDOM(dom, VNodeProps = {}) {
       dom[key] = VNodeProps[key]
     }
   }
+}
+
+function getDomByMemoFunctionComponent(VNode) {
+  const { type, props } = VNode;
+  const renderVNode = type.type(props);
+  if (!renderVNode) return null;
+  VNode.oldRenderVNode = renderVNode;
+  const dom = createDom(renderVNode);
+  VNode.dom = dom;
+  return dom;
 }
 
 function getDomByFunctionComponent(VNode) {
@@ -159,7 +172,8 @@ function deepDOMDiff(oldVNode, newVNode) {
     ORIGIN_NODE: typeof oldVNode.type === 'string', // 原生节点
     CLASS_COMPONENT: typeof oldVNode.type === 'function' && oldVNode.type.IS_CLASS_COMPONENT,
     FUNCTION_COMPONENT: typeof oldVNode.type === 'function',
-    TEXT: oldVNode.type === REACT_TEXT
+    TEXT: oldVNode.type === REACT_TEXT,
+    MEMO: oldVNode.type.$$typeof === REACT_MEMO
   }
   let DIFF_TYPE = Object.keys(diffTypeMap).filter(key => diffTypeMap[key])[0];
   switch (DIFF_TYPE) {
@@ -178,6 +192,9 @@ function deepDOMDiff(oldVNode, newVNode) {
       newVNode.dom = findDomByVNode(oldVNode)
       newVNode.dom.textContent = newVNode.props.text;
       break;
+    case 'MEMO':
+      updateMemoFunctionComponent(oldVNode, newVNode)
+      break;
     default:
       break;
   }
@@ -190,8 +207,25 @@ function updateClassComponent(oldVNode, newVNode) {
   classInstance.updater.launchUpdate(newVNode.props)
 }
 
+function updateMemoFunctionComponent(oldVNode, newVNode) {
+  console.log(oldVNode, newVNode)
+  const { type } = oldVNode
+  if (!type.compare(oldVNode.props, newVNode.props)) { // 才需要更新
+    const oldDom = findDomByVNode(oldVNode);
+    const { type, props } = newVNode;
+    const newRenderVNode = type.type(props);
+    updateDomTree(oldVNode.oldRenderVNode, newRenderVNode, oldDom);
+    newVNode.oldRenderVdom = newRenderVNode;
+  } else {
+    newVNode.oldRenderVdom = oldVNode.oldRenderVdom;
+  }
+  // const oldDom = findDomByVNode(oldVNode);
+  // console.log(oldDom)
+}
+
 function updateFunctionComponent(oldVNode, newVNode) {
   let oldDom = findDomByVNode(oldVNode);
+  newVNode.dom = oldDom;
   if (!oldDom) return;
   const { type, props } = newVNode;
   // 函数组件本身转化成虚拟dom，其中type是return的函数，type(props)执行完就是要渲染的虚拟dom
