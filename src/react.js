@@ -1,6 +1,12 @@
-import { REACT_ELEMENT, REACT_FORWARD_REF, toVNode } from './utils';
+import { REACT_ELEMENT, REACT_FORWARD_REF, toVNode, shallowEqual } from './utils';
 
 import { Component } from './Components';
+
+class PureComponent extends Component {
+  shouldComponentUpdate(nextProps, nextState) {
+      return !shallowEqual(this.props, nextProps) || !shallowEqual(this.state, nextState)
+  }
+}
 
 function createElement(type, properties, children) {
   let key = properties.key || '';
@@ -39,6 +45,7 @@ function forwardRef(render) {
 const React = {
   createElement,
   Component,
+  PureComponent,
   createRef,
   forwardRef
 }
