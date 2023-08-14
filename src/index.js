@@ -1,5 +1,112 @@
-import React from './react';
+import React, {useRef} from './react';
 import ReactDOM from './react-dom';
+
+export default function Form() {
+  const inputRef = useRef(null);
+
+  function handleClick() {
+    inputRef.current.focus();
+  }
+
+  return (
+    <div>
+      <input ref={inputRef} />
+      <button onClick={handleClick}>
+        Focus the input
+      </button>
+    </div>
+  );
+}
+ReactDOM.render(<Form />, document.getElementById('root'));
+
+
+// export function createConnection(serverUrl, roomId) {
+//   // A real implementation would actually connect to the server
+//   return {
+//     connect() {
+//       console.log('✅ Connecting to "' + roomId + '" room at ' + serverUrl + '...');
+//     },
+//     disconnect() {
+//       console.log('❌ Disconnected from "' + roomId + '" room at ' + serverUrl);
+//     }
+//   };
+// }
+
+// function ChatRoom({ roomId }) {
+//   const [serverUrl, setServerUrl] = useState('https://localhost:1234');
+
+//   useEffect(() => {
+//     const connection = createConnection(serverUrl, roomId);
+//     connection.connect();
+//     return () => {
+//       connection.disconnect();
+//     };
+//   }, [roomId, serverUrl]);
+
+//   return (
+//     <div>
+//       <label>
+//         Server URL:{' '}
+//         <input
+//           value={serverUrl}
+//           onInput={e => setServerUrl(e.target.value)}
+//         />
+//       </label>
+//       <h1>Welcome to the {roomId} room!</h1>
+//     </div>
+//   );
+// }
+
+// export default function App() {
+//   const [roomId, setRoomId] = useState('general');
+//   const [show, setShow] = useState(false);
+//   return <div>
+//       <label>
+//         Choose the chat room:{' '}
+//         <select
+//           value={roomId}
+//           onChange={e => setRoomId(e.target.value)}
+//         >
+//           <option value="general">general</option>
+//           <option value="travel">travel</option>
+//           <option value="music">music</option>
+//         </select>
+//       </label>
+//       <button onClick={() => setShow(!show)}>
+//         {show ? 'Close chat' : 'Open chat'}
+//       </button>
+//       {show && <hr />}
+//       {show && <ChatRoom roomId={roomId} />}
+//     </div>
+// }
+// ReactDOM.render(<App />, document.getElementById('root'));
+
+// const initialState = {count: 0};
+
+// function reducer(state, action) {
+//   switch (action.type) {
+//     case 'increment':
+//       return {count: state.count + 1};
+//     case 'decrement':
+//       return {count: state.count - 1};
+//     default:
+//       throw new Error();
+//   }
+// }
+
+// function Counter() {
+//   const [state, dispatch] = useReducer(reducer, initialState);
+//   return (
+//     <div>
+//       Count: {state.count}
+//       <button onClick={() => dispatch({type: 'decrement'})}>-</button>
+//       <button onClick={() => dispatch({type: 'increment'})}>+</button>
+//     </div>
+//   );
+// }
+
+// ReactDOM.render(<Counter />, document.getElementById('root'));
+
 // class Greeting extends React.PureComponent {
 //   constructor(props) {
 //     super(props);
@@ -11,49 +118,49 @@ import ReactDOM from './react-dom';
 //   }
 // }
 
-const Greeting = React.memo(function Greeting({ name }) {
-  console.log("Greeting was rendered at", new Date().toLocaleTimeString());
-  return <h3>Hello{name && ', '}{name}!</h3>;
-});
-
-// const Greeting = function Greeting({ name }) {
+// const Greeting = React.memo(function Greeting({ name }) {
 //   console.log("Greeting was rendered at", new Date().toLocaleTimeString());
 //   return <h3>Hello{name && ', '}{name}!</h3>;
-// };
+// });
+
+// // const Greeting = function Greeting({ name }) {
+// //   console.log("Greeting was rendered at", new Date().toLocaleTimeString());
+// //   return <h3>Hello{name && ', '}{name}!</h3>;
+// // };
 
 
-class MyApp extends React.Component {
-  constructor(props){
-    super(props)
-    this.state = {name: '', address: ''}
-  }
+// class MyApp extends React.Component {
+//   constructor(props){
+//     super(props)
+//     this.state = {name: '', address: ''}
+//   }
 
-  setName = (newName) => {
-    this.setState({name: newName})
-  }
-  setAddress = (newAddress) => {
-    this.setState({address: newAddress})
-  }
-  render(){
-    return <div>
-      <label>
-        Name{': '}
-        <input onInput={e => {
-          this.setName(e.target.value)
-        }} />
-      </label>
-      <label>
-        Address{': '}
-        <input onInput={e => {
-          this.setAddress(e.target.value)
-        }} />
-      </label>
-      <Greeting name={this.state.name} />
-    </div> 
-  };
-}
+//   setName = (newName) => {
+//     this.setState({name: newName})
+//   }
+//   setAddress = (newAddress) => {
+//     this.setState({address: newAddress})
+//   }
+//   render(){
+//     return <div>
+//       <label>
+//         Name{': '}
+//         <input onInput={e => {
+//           this.setName(e.target.value)
+//         }} />
+//       </label>
+//       <label>
+//         Address{': '}
+//         <input onInput={e => {
+//           this.setAddress(e.target.value)
+//         }} />
+//       </label>
+//       <Greeting name={this.state.name} />
+//     </div> 
+//   };
+// }
 
-ReactDOM.render(<MyApp />, document.getElementById('root'));
+// ReactDOM.render(<MyApp />, document.getElementById('root'));
 // class ScrollingList extends React.Component {
 //   counter = 0
 //   isAppend = true

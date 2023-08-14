@@ -2,6 +2,8 @@ import { REACT_ELEMENT, REACT_MEMO, REACT_FORWARD_REF, toVNode, shallowEqual } f
 
 import { Component } from './Components';
 
+export * from './hooks'
+
 class PureComponent extends Component {
   shouldComponentUpdate(nextProps, nextState) {
       return !shallowEqual(this.props, nextProps) || !shallowEqual(this.state, nextState)

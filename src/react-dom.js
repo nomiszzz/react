@@ -1,8 +1,15 @@
 import { REACT_ELEMENT, REACT_MEMO, REACT_FORWARD_REF, REACT_TEXT, MOVE, CREATE } from "./utils";
 import { addEvent } from './event';
+import { resetHookIndex } from './hooks';
+
+export let emitUpdateForHooks;
 
 function render(VNode, containerDom) {
   mount(VNode, containerDom);
+  emitUpdateForHooks = () => {
+    resetHookIndex();
+    updateDomTree(VNode, VNode, findDomByVNode(VNode))
+  }
 }
 
 function mount(VNode, containerDom) {
@@ -50,6 +57,10 @@ function mountArray(children, parent) {
   if (!Array.isArray(children)) render;
   const length = children.length
   for (let i = 0; i < length; i++) {
+    if (!children[i]) {
+      children.splice(i, 1);
+      continue
+    }
     children[i].index = i; // 用在后面的updateChildren中进行仅右移的计算中
     mount(children[i], parent)
   }
